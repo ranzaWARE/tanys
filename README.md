@@ -22,32 +22,52 @@ npm run dev
 
 ## Docker
 
-Il compose contiene solo `web` — niente reverse proxy incluso, perché la
-gestione di HTTPS/dominio la fai col tuo **Nginx Proxy Manager** già in uso
-per gli altri servizi sullo stesso host (aggiungerne un secondo dentro questo
-stack avrebbe solo creato conflitti di porte).
+Il compose è autosufficiente: include Caddy davanti a `web` per servire
+tutto in HTTPS senza dover configurare nulla altrove (utile per far girare
+lo stack anche su un host che non ha già un reverse proxy come NPM). Il
+Caddyfile è "cotto" dentro l'immagine in fase di build, non montato da
+host — evita un bug noto di Portainer/deploy-da-Git in cui il bind mount di
+un singolo file fallisce perché il path clonato da Portainer non coincide
+con quello visto dal motore Docker.
 
 ```sh
 docker compose up --build
+# apri https://<indirizzo-del-server>:8843
 ```
 
-Pubblica il servizio sulla porta host `3000` di default (cambiabile con
-`WEB_PORT` in un file `.env` accanto a `docker-compose.yml`, se ti serve
-un'altra porta libera). Poi in NPM:
+Porte di default `8880`/`8843` (non `80`/`443`, per non entrare in conflitto
+con altri stack — es. un Nginx Proxy Manager già presente sullo stesso host).
+Si cambiano con `HTTP_PORT`/`HTTPS_PORT` in un file `.env` accanto a
+`docker-compose.yml` se dovessero collidere anche loro con qualcos'altro:
 
-1. **Proxy Hosts → Add Proxy Host**
-2. Domain: il sottodominio che vuoi usare (es. `video.tuodominio.it`)
-3. Forward Hostname/IP: l'IP del server (o il nome del container `tanys-web-1`
-   se NPM gira sulla stessa rete Docker), Forward Port: `3000` (o il valore
-   di `WEB_PORT`)
-4. Tab **SSL** → richiedi un certificato Let's Encrypt, attiva **Force SSL**
+```
+HTTP_PORT=8880
+HTTPS_PORT=8843
+```
 
-> **Importante — serve HTTPS vero.** WebCodecs (`VideoEncoder`/`VideoFrame`,
-> il cuore dell'export hardware-accelerated) è una API riservata ai *secure
-> context*: senza il certificato attivato in NPM (o su un IP/dominio in plain
-> HTTP) il browser lo blocca, il badge in header mostrerà "GPU: no" e
-> l'export fallirà con "questo browser non supporta WebCodecs" — non è un
-> bug del codice, è la policy del browser.
+- **Hai un dominio che punta al server** e le porte 80/443 sono libere e
+  raggiungibili da internet: imposta anche `SITE_ADDRESS=video.tuodominio.it`
+  e metti `HTTP_PORT=80`/`HTTPS_PORT=443` — Caddy ottiene da solo un
+  certificato Let's Encrypt valido (la verifica ACME passa sempre dalla
+  porta 80 standard, su una porta diversa un dominio reale non funziona).
+- **Solo IP, porte non standard** (il default): non serve configurare nulla
+  — Caddy serve HTTPS con un certificato self-signed dalla sua CA interna.
+  Il browser avvisa "connessione non sicura" al primo accesso: si procede
+  manualmente una volta, da lì in poi la connessione è comunque un secure
+  context e WebCodecs funziona normalmente.
+
+Se preferisci usare un reverse proxy che hai già (es. Nginx Proxy Manager)
+invece del Caddy incluso: togli il servizio `caddy` da `docker-compose.yml`,
+pubblica `web` su una porta host libera, e punta un Proxy Host del tuo
+reverse proxy lì — funziona altrettanto bene, è solo un servizio in più da
+gestire a mano invece che incluso nello stack.
+
+> **Importante — serve HTTPS vero, qualunque strada scegli.** WebCodecs
+> (`VideoEncoder`/`VideoFrame`, il cuore dell'export hardware-accelerated) è
+> una API riservata ai *secure context*: in plain HTTP il browser lo blocca,
+> il badge in header mostrerà "GPU: no" e l'export fallirà con "questo
+> browser non supporta WebCodecs" — non è un bug del codice, è la policy del
+> browser.
 
 Fase 1: nessuna persistenza ancora (stato del progetto solo in memoria nel
 browser) — la persistenza progetti/media (Postgres) arriva in Fase 4.
