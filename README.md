@@ -28,7 +28,7 @@ l'export hardware-accelerated, funziona solo in *secure context* — su un IP
 o dominio raggiunto in plain HTTP il browser lo blocca e basta).
 
 ```sh
-docker compose -f docker/docker-compose.yml up --build
+docker compose up --build
 # apri https://<indirizzo-del-server>
 ```
 
