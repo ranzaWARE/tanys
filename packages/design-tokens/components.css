@@ -1,0 +1,166 @@
+/* =========================================================
+   AUROR — Component + App-shell layer
+   Consuma i token semantici di tokens.css. Non usare mai colori hardcoded.
+   ========================================================= */
+
+*{ box-sizing: border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  font-family: var(--auror-font);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--auror-fs-14);
+  line-height: var(--auror-lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- App shell ---------------------------------------- */
+.appShell{
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: var(--auror-header-h) 1fr;
+}
+.appShell.hasSidebar{
+  grid-template-columns: 248px 1fr;
+  grid-template-areas: "header header" "side main";
+}
+.appShell:not(.hasSidebar){
+  grid-template-areas: "header" "main";
+}
+
+.appHeader{
+  grid-area: header;
+  height: var(--auror-header-h);
+  display: flex; align-items: center; gap: var(--auror-s-6);
+  padding: 0 var(--auror-s-8);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border);
+}
+.brand{ display: inline-flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.01em; }
+.brandMark{
+  display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: var(--auror-r);
+  background: var(--accent); color: var(--text-on-accent);
+  font-weight: 800; font-size: 16px;
+}
+.appHeader .spacer{ flex: 1; }
+.appHeader nav{ display: flex; gap: 4px; }
+.appHeader nav a{
+  text-decoration: none; color: var(--text-secondary);
+  font-size: var(--auror-fs-13); padding: 6px 10px; border-radius: var(--auror-r);
+}
+.appHeader nav a:hover{ background: var(--surface-sunken); color: var(--text); }
+.appHeader nav a.active{ background: var(--accent-soft); color: var(--text); font-weight: 600; }
+
+.appSide{
+  grid-area: side;
+  background: var(--inverse-surface);
+  border-right: 1px solid var(--inverse-border);
+  padding: var(--auror-s-6);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.appSide .navItem{
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: var(--auror-r);
+  color: var(--inverse-text-muted); text-decoration: none;
+  font-size: var(--auror-fs-13); cursor: pointer;
+}
+.appSide .navItem:hover{ background: rgba(255,255,255,.05); color: var(--inverse-text); }
+.appSide .navItem.active{ background: var(--accent-soft); color: var(--inverse-text); font-weight: 600; }
+.appSide .navGroup{ font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--inverse-text-muted); padding: 14px 12px 6px; }
+
+.appMain{ grid-area: main; padding: var(--auror-s-8); overflow: auto; }
+.pageHead{ display: flex; align-items: flex-end; justify-content: space-between; gap: var(--auror-s-6); margin-bottom: var(--auror-s-8); flex-wrap: wrap; }
+.pageTitle{ font-size: var(--auror-fs-28); font-weight: 800; letter-spacing: -.01em; line-height: var(--auror-lh-tight); margin: 0; }
+.pageLede{ margin: 6px 0 0; color: var(--text-secondary); max-width: 60ch; }
+
+/* ---- Layout helpers ----------------------------------- */
+.stack{ display: flex; flex-direction: column; gap: var(--auror-s-6); }
+.row{ display: flex; align-items: center; gap: var(--auror-s-4); flex-wrap: wrap; }
+.grid{ display: grid; gap: var(--auror-s-6); grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+/* ---- Card --------------------------------------------- */
+.card{
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--auror-r);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.cardHeader{
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.cardHeader h3{ margin: 0; font-size: var(--auror-fs-14); font-weight: 700; }
+.cardHeader .small{ color: var(--text-muted); font-size: var(--auror-fs-12); }
+.cardBody{ padding: 18px; }
+
+/* ---- Typography specimens ----------------------------- */
+.h1{ font-size: var(--auror-fs-28); font-weight: 800; letter-spacing: -.01em; line-height: var(--auror-lh-tight); margin: 0; }
+.h2{ font-size: var(--auror-fs-20); font-weight: 700; line-height: 1.25; margin: 0; }
+.h3{ font-size: var(--auror-fs-16); font-weight: 700; line-height: var(--auror-lh-snug); margin: 0; }
+.muted{ color: var(--text-muted); }
+.small{ font-size: var(--auror-fs-12); color: var(--text-muted); }
+.accent{ color: var(--accent-hover); }
+
+/* ---- Button (canonico .aurorBtn) ---------------------- */
+.aurorBtn{
+  border: 1px solid var(--border);
+  background: var(--surface-raised); color: var(--text);
+  padding: 10px 12px; border-radius: var(--auror-r);
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; white-space: nowrap; line-height: 1.1;
+  transition: transform var(--auror-dur-fast) ease, background var(--auror-dur-base) ease, border-color var(--auror-dur-base) ease;
+  font-family: inherit; font-size: 13px;
+}
+.aurorBtn:hover{ background: var(--surface-sunken); }
+.aurorBtn:active{ transform: translateY(1px); }
+.aurorBtn.primary{ background: var(--accent); border-color: var(--accent-hover); color: var(--text-on-accent); font-weight: 600; }
+.aurorBtn.primary:hover{ background: var(--accent); filter: brightness(1.05); }
+.aurorBtn.danger{ background: var(--surface-raised); border-color: var(--danger-soft); color: var(--danger); }
+.aurorBtn.active{ box-shadow: var(--focus-ring); border-color: var(--accent-ring); }
+.aurorBtn[disabled]{ opacity: .5; cursor: not-allowed; }
+.btnIco{ display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; color: currentColor; }
+.btnIco svg{ width: 20px; height: 20px; display: block; }
+
+/* ---- Inputs / select / label --------------------------- */
+.aurorInput, .aurorSelect{
+  width: 100%; height: var(--auror-control-h);
+  border: 1px solid var(--border); border-radius: var(--auror-r);
+  padding: 0 10px; background: var(--surface-raised); color: var(--text);
+  font-family: inherit; font-size: 13px; outline: none;
+}
+.aurorInput:focus, .aurorSelect:focus{ box-shadow: var(--focus-ring); border-color: var(--accent-ring); }
+.aurorLabel{ font-size: 12px; color: var(--text-secondary); display: block; margin: 0 0 6px; }
+.field{ display: block; }
+
+/* ---- Tags / badges / kbd ------------------------------- */
+.dsTag{
+  font-size: 12px; padding: 6px 10px;
+  border: 1px solid var(--border); border-radius: var(--auror-r);
+  background: var(--surface-raised); color: var(--text-secondary);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.dsTag--brand{ background: var(--accent-soft); border-color: var(--accent-ring); color: var(--text); font-weight: 600; }
+.dsTag--ghost{ background: transparent; }
+.badgeSm{
+  font-size: 11px; padding: 4px 10px;
+  border: 1px solid var(--border); border-radius: var(--auror-r);
+  background: var(--surface-raised); color: var(--text-secondary);
+}
+.kbd{
+  font-family: var(--auror-mono); font-size: 11px; padding: 4px 8px;
+  border: 1px solid var(--border); border-radius: var(--auror-r);
+  color: var(--text-secondary); background: var(--surface-raised);
+}
+
+/* Theme toggle button */
+.themeToggle{
+  width: var(--auror-control-h); height: var(--auror-control-h);
+  display: grid; place-items: center; cursor: pointer;
+  border: 1px solid var(--border); border-radius: var(--auror-r);
+  background: var(--surface-raised); color: var(--text-secondary);
+}
+.themeToggle:hover{ background: var(--surface-sunken); }
+.themeToggle svg{ width: 16px; height: 16px; }

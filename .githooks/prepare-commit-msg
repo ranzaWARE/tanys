@@ -1,0 +1,65 @@
+#!/bin/sh
+# Auto-genera il messaggio di commit quando non ne viene fornito uno (es. da
+# VSCode con la casella messaggio vuota). Se la CLI "claude" e' disponibile
+# nella shell, chiede un riassunto in una riga del diff in staging; altrimenti
+# ripiega su un riepilogo basato sui file cambiati. Non tocca mai un commit
+# per cui e' gia' stato fornito un messaggio (-m/-F/template), un merge, uno
+# squash o un amend.
+#
+# Attivato via "core.hooksPath = .githooks" (vedi postinstall in package.json).
+
+MSG_FILE="$1"
+COMMIT_SOURCE="$2"
+
+case "$COMMIT_SOURCE" in
+  merge | squash | commit | message | template)
+    exit 0
+    ;;
+esac
+
+# Se nel file c'e' gia' testo non-commento (es. template custom), non toccarlo.
+if grep -qE '^[^#[:space:]]' "$MSG_FILE" 2>/dev/null; then
+  exit 0
+fi
+
+if [ -z "$(git diff --cached --name-only 2>/dev/null)" ]; then
+  exit 0
+fi
+
+generate_with_claude() {
+  command -v claude >/dev/null 2>&1 || return 1
+  command -v timeout >/dev/null 2>&1 || return 1
+
+  RAW=$(
+    git diff --cached -- . \
+      ':(exclude)package-lock.json' \
+      ':(exclude)*.lock' \
+      2>/dev/null | head -c 12000
+  )
+  [ -z "$RAW" ] && return 1
+
+  OUT=$(
+    printf '%s' "$RAW" | timeout 25 claude -p \
+      "Scrivi un messaggio di commit git in italiano, una sola riga in formato conventional commits (tipo: sintesi breve), massimo 72 caratteri, senza virgolette ne' backtick ne' markdown. Rispondi SOLO con quella riga. Riassumi questo diff in staging:" \
+      2>/dev/null
+  )
+  [ -z "$OUT" ] && return 1
+
+  printf '%s\n' "$OUT" | grep -m1 '[^[:space:]]' | sed -e 's/^["`]*//' -e 's/["`]*$//' -e 's/^#*[[:space:]]*//'
+}
+
+generate_fallback() {
+  files=$(git diff --cached --name-only)
+  count=$(printf '%s\n' "$files" | wc -l | tr -d ' ')
+  if [ "$count" -eq 1 ]; then
+    printf 'chore: aggiorna %s\n' "$files"
+  else
+    scope=$(printf '%s\n' "$files" | sed -E 's#/.*$##' | sort -u | head -n2 | paste -sd, -)
+    printf 'chore: aggiorna %s file (%s)\n' "$count" "$scope"
+  fi
+}
+
+message=$(generate_with_claude)
+[ -z "$message" ] && message=$(generate_fallback)
+
+printf '%s\n' "$message" > "$MSG_FILE"

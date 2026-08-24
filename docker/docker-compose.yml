@@ -1,0 +1,30 @@
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    expose:
+      - "3000"
+
+  # Fronte HTTPS autonomo: senza questo servizio, l'app accessibile solo in
+  # plain HTTP su un IP/dominio remoto non e' un secure context e WebCodecs
+  # (l'export hardware-accelerated) resta bloccato dal browser. Vedi README.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:443}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

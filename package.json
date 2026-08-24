@@ -1,0 +1,16 @@
+{
+  "name": "tanys",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=web",
+    "build": "npm run build --workspace=web",
+    "start": "npm run start --workspace=web",
+    "lint": "npm run lint --workspace=web",
+    "postinstall": "git config core.hooksPath .githooks 2>/dev/null || true"
+  }
+}

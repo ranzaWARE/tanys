@@ -1,0 +1,193 @@
+/* Layout dell'editor a viewport pieno — porting delle classi "reframeShell"
+   gia' provate nel prototipo 360, generalizzate per l'editor 2D. */
+
+html,
+body {
+  height: 100%;
+}
+body {
+  overflow: hidden;
+}
+
+.appShell.editorShell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--auror-s-4);
+  gap: var(--auror-s-4);
+  background: var(--surface);
+}
+
+.dsHeaderRail {
+  flex: 0 0 auto;
+}
+.dsHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--auror-s-6);
+  height: var(--auror-header-h);
+  padding: 0 var(--auror-s-6);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--auror-r);
+  box-shadow: var(--shadow-md);
+}
+.dsBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.dsBrandMark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--auror-r);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 800;
+  font-size: 16px;
+}
+.dsHeaderRight {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--auror-s-3);
+}
+.iconBtn {
+  width: var(--auror-control-h);
+  height: var(--auror-control-h);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: var(--auror-r);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+}
+.iconBtn:hover {
+  background: var(--surface-sunken);
+}
+.iconBtn svg {
+  width: 16px;
+  height: 16px;
+}
+[data-theme="dark"] .ic-sun {
+  display: none;
+}
+:root:not([data-theme="dark"]) .ic-moon {
+  display: none;
+}
+
+.appMain.editorMain {
+  flex: 1;
+  padding: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--auror-s-4);
+  min-height: 0;
+}
+
+.viewportCard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0;
+}
+.viewportCard .cardBody {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.stage {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #0a0d11;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+.frame {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  background: #000;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.frame canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+}
+.emptyState {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  padding: var(--auror-s-8);
+  font-size: var(--auror-fs-14);
+  color: var(--text-muted);
+}
+
+.transport {
+  display: flex;
+  align-items: center;
+  gap: var(--auror-s-4);
+  padding: var(--auror-s-4) var(--auror-s-5);
+  border-top: 1px solid var(--border);
+  background: var(--surface-raised);
+}
+.transport .playBtn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  flex: 0 0 auto;
+}
+.scrub {
+  flex: 1;
+  position: relative;
+}
+.seekInput {
+  width: 100%;
+}
+input[type="range"] {
+  accent-color: var(--accent);
+  height: 22px;
+}
+
+.controls {
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding-right: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--auror-s-4);
+}
+.controls > .card {
+  flex: 0 0 auto;
+}
+.controls .cardBody {
+  padding: 14px;
+}
+.line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.line > .aurorLabel {
+  margin: 0;
+  white-space: nowrap;
+}

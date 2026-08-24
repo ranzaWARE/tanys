@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(which docker *)",
+      "Read(//home/ranza/**)",
+      "Read(//usr/lib/**)"
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+# Se SITE_ADDRESS e' un dominio reale (es. video.tuodominio.it) e le porte
+# 80/443 sono raggiungibili da internet, Caddy ottiene da solo un certificato
+# Let's Encrypt valido. Se non e' impostata (o e' un IP), il default ":443"
+# fa si' che Caddy non tenti nessuna richiesta ACME (non ha senso per un IP)
+# e serva HTTPS con un certificato self-signed dalla sua CA interna: al primo
+# accesso il browser avvisa "connessione non sicura", ma dopo aver proceduto
+# manualmente la connessione e' comunque un secure context — WebCodecs
+# funziona lo stesso.
+{$SITE_ADDRESS::443}
+
+encode gzip
+
+reverse_proxy web:3000
