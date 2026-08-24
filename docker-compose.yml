@@ -20,8 +20,6 @@ services:
     ports:
       - "${HTTP_PORT:-8880}:80"
       - "${HTTPS_PORT:-8843}:443"
-    environment:
-      SITE_ADDRESS: ${SITE_ADDRESS:-:443}
     volumes:
       - caddy_data:/data
       - caddy_config:/config

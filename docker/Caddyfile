@@ -2,13 +2,12 @@
 	debug
 }
 
-# Se SITE_ADDRESS e' un dominio reale (es. video.tuodominio.it) e le porte
-# 80/443 sono raggiungibili da internet, si puo' passare a un issuer ACME
-# reale togliendo "tls internal". Con "tls internal" esplicito, Caddy usa
-# sempre e comunque la sua CA interna (self-signed) — anche per connessioni
-# dirette via IP senza SNI, che con la rilevazione automatica implicita
-# risultavano in un errore di handshake TLS.
-{$SITE_ADDRESS::443} {
+# IP hardcoded invece che via $SITE_ADDRESS: la variabile d'ambiente non
+# arrivava al container attraverso la catena Portainer -> interpolazione
+# del compose (confermato dai log di debug: l'identificatore del
+# certificato restava sempre l'IP interno del container Docker, mai
+# quello impostato). Se cambi server/IP, modifica questa riga.
+192.168.100.5 {
 	tls internal
 
 	encode gzip

@@ -31,7 +31,6 @@ un singolo file fallisce perché il path clonato da Portainer non coincide
 con quello visto dal motore Docker.
 
 ```sh
-echo "SITE_ADDRESS=<ip-o-dominio-del-server>" > .env
 docker compose up --build
 # apri https://<indirizzo-del-server>:8843
 ```
@@ -46,33 +45,45 @@ HTTP_PORT=8880
 HTTPS_PORT=8843
 ```
 
-`SITE_ADDRESS` va **sempre impostato** a un indirizzo raggiungibile
-dall'esterno — dominio o IP del server — in un file `.env` accanto a
-`docker-compose.yml`:
+L'indirizzo per cui Caddy genera il certificato è **scritto direttamente in
+[`docker/Caddyfile`](docker/Caddyfile)** (non una variabile d'ambiente): in
+alcune configurazioni di deploy da Git (Portainer incluso, nel nostro caso)
+le variabili d'ambiente dello stack non arrivano all'interpolazione del
+compose in modo affidabile, quindi meglio un valore esplicito nel file che
+un meccanismo che silenziosamente non funziona. Se cambi server o dominio,
+modifica quella riga:
 
 ```
-SITE_ADDRESS=192.168.1.50
+video.tuodominio.it {
+	...
+}
+```
+
+oppure, per un IP:
+
+```
+192.168.1.50 {
+	...
+}
 ```
 
 Connettendosi via IP (non dominio) il browser non manda nessun hostname
 nell'handshake TLS (SNI vuoto, gli IP non ci vanno per specifica): senza
-`SITE_ADDRESS` esplicito, Caddy non sa per quale identità generare il
-certificato e l'handshake fallisce con un errore tipo
-`ERR_SSL_PROTOCOL_ERROR`/`SSL_ERROR_INTERNAL_ERROR_ALERT`. Con l'IP dichiarato
-esplicitamente, Caddy genera all'avvio un certificato self-signed valido
-proprio per quell'IP.
+un indirizzo esplicito nel Caddyfile, Caddy non sa per quale identità
+generare il certificato e l'handshake fallisce con un errore tipo
+`ERR_SSL_PROTOCOL_ERROR`/`SSL_ERROR_INTERNAL_ERROR_ALERT`.
 
-- **Hai un dominio che punta al server**, con le porte 80/443 libere e
-  raggiungibili da internet: `SITE_ADDRESS=video.tuodominio.it` e
+- **Dominio che punta al server**, con le porte 80/443 libere e
+  raggiungibili da internet: metti il dominio come indirizzo nel Caddyfile e
   `HTTP_PORT=80`/`HTTPS_PORT=443` — Caddy ottiene da solo un certificato
   Let's Encrypt valido (la verifica ACME passa sempre dalla porta 80
   standard, su una porta diversa un dominio reale non funziona).
-- **Solo IP**: `SITE_ADDRESS=<ip-del-server>` — Caddy serve HTTPS con un
-  certificato self-signed dalla sua CA interna, valido per quell'IP. Il
-  browser avvisa "connessione non sicura" al primo accesso (normale per un
-  certificato self-signed): si procede manualmente una volta, da lì in poi
-  la connessione è comunque un secure context e WebCodecs funziona
-  normalmente.
+- **Solo IP**: metti l'IP del server come indirizzo nel Caddyfile — Caddy
+  serve HTTPS con un certificato self-signed dalla sua CA interna, valido
+  per quell'IP. Il browser avvisa "connessione non sicura" al primo accesso
+  (normale per un certificato self-signed): si procede manualmente una
+  volta, da lì in poi la connessione è comunque un secure context e
+  WebCodecs funziona normalmente.
 
 Se preferisci usare un reverse proxy che hai già (es. Nginx Proxy Manager)
 invece del Caddy incluso: togli il servizio `caddy` da `docker-compose.yml`,
