@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useProjectStore } from "@/lib/store/project-store";
+import { useProjectStore, type Clip, type ClipPatch } from "@/lib/store/project-store";
 import { useClipEngine } from "../use-clip-engine";
+import { Timeline } from "../Timeline";
 import "../editor.css";
 
 function formatTime(s: number) {
@@ -42,40 +43,112 @@ function ThemeToggle() {
   );
 }
 
+function ClipProperties({
+  clip,
+  onUpdate,
+  disabled,
+}: {
+  clip: Clip;
+  onUpdate: (patch: ClipPatch) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="card">
+      <div className="cardHeader">
+        <h3>Proprietà clip</h3>
+      </div>
+      <div className="cardBody stack">
+        <div className="line">
+          <span className="aurorLabel">Opacità</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={clip.opacity}
+            disabled={disabled}
+            onChange={(e) => onUpdate({ opacity: Number(e.target.value) })}
+          />
+        </div>
+        {clip.kind === "text" && (
+          <>
+            <div className="field">
+              <span className="aurorLabel">Testo</span>
+              <input
+                className="aurorInput"
+                type="text"
+                value={clip.text}
+                disabled={disabled}
+                onChange={(e) => onUpdate({ text: e.target.value })}
+              />
+            </div>
+            <div className="line">
+              <span className="aurorLabel">Colore</span>
+              <input
+                type="color"
+                value={clip.color}
+                disabled={disabled}
+                onChange={(e) => onUpdate({ color: e.target.value })}
+              />
+            </div>
+            <div className="line">
+              <span className="aurorLabel">Dimensione</span>
+              <input
+                className="aurorInput"
+                style={{ width: 80 }}
+                type="number"
+                min={12}
+                max={200}
+                value={clip.fontSize}
+                disabled={disabled}
+                onChange={(e) => onUpdate({ fontSize: Number(e.target.value) })}
+              />
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function Editor({ projectId }: { projectId: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const setProjectId = useProjectStore((s) => s.setProjectId);
-  const importMedia = useProjectStore((s) => s.importMedia);
-  const setTrim = useProjectStore((s) => s.setTrim);
   const project = useProjectStore((s) => s.project);
   const media = useProjectStore((s) => s.media);
+  const selectedClipId = useProjectStore((s) => s.selectedClipId);
+  const selectClip = useProjectStore((s) => s.selectClip);
+  const addVideoTrack = useProjectStore((s) => s.addVideoTrack);
+  const addTextTrack = useProjectStore((s) => s.addTextTrack);
+  const removeTrack = useProjectStore((s) => s.removeTrack);
+  const importMediaToTrack = useProjectStore((s) => s.importMediaToTrack);
+  const addTextClip = useProjectStore((s) => s.addTextClip);
+  const moveClip = useProjectStore((s) => s.moveClip);
+  const resizeClipStart = useProjectStore((s) => s.resizeClipStart);
+  const resizeClipEnd = useProjectStore((s) => s.resizeClipEnd);
+  const updateClip = useProjectStore((s) => s.updateClip);
+  const removeClip = useProjectStore((s) => s.removeClip);
 
-  const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
 
   useEffect(() => {
     setProjectId(projectId);
   }, [projectId, setProjectId]);
 
-  const clip = project.tracks[0]?.clips[0] ?? null;
-  const asset = clip ? (media[clip.mediaId] ?? null) : null;
-
-  const engine = useClipEngine(canvasRef, asset);
+  const engine = useClipEngine(canvasRef, project, media);
   const isExporting = engine.exportState.status === "running";
+  const isEmpty = project.tracks.every((t) => t.clips.length === 0);
 
-  const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setImporting(true);
+  const selectedClip: Clip | null =
+    project.tracks.flatMap((t) => t.clips).find((c) => c.id === selectedClipId) ?? null;
+
+  const onImportToTrack = async (trackId: string, file: File) => {
     setImportError(null);
     try {
-      await importMedia(file);
+      await importMediaToTrack(trackId, file);
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Import fallito");
-    } finally {
-      setImporting(false);
     }
   };
 
@@ -104,16 +177,12 @@ export function Editor({ projectId }: { projectId: string }) {
         <section className="card viewportCard">
           <div className="cardBody">
             <div className="stage">
-              <div
-                className="frame"
-                style={asset ? { aspectRatio: `${asset.width} / ${asset.height}` } : { width: "100%", height: "100%" }}
-              >
+              <div className="frame" style={{ aspectRatio: `${project.width} / ${project.height}` }}>
                 <canvas ref={canvasRef} />
               </div>
-              {!asset && (
+              {isEmpty && (
                 <div className="emptyState">
-                  <span>Importa un video per iniziare.</span>
-                  {importing && <span className="small">Caricamento…</span>}
+                  <span>Importa un video da una traccia qui sotto per iniziare.</span>
                   {importError && (
                     <span className="small" style={{ color: "var(--danger)" }}>
                       {importError}
@@ -136,7 +205,7 @@ export function Editor({ projectId }: { projectId: string }) {
                   className="seekInput"
                   type="range"
                   min={0}
-                  max={Math.max(asset?.duration ?? 0, 0.01)}
+                  max={Math.max(engine.duration, 0.01)}
                   step={0.01}
                   value={engine.currentTime}
                   disabled={!engine.ready || isExporting}
@@ -144,114 +213,70 @@ export function Editor({ projectId }: { projectId: string }) {
                 />
               </div>
               <span className="small" style={{ whiteSpace: "nowrap" }}>
-                {formatTime(engine.currentTime)} / {formatTime(asset?.duration ?? 0)}
+                {formatTime(engine.currentTime)} / {formatTime(engine.duration)}
               </span>
             </div>
           </div>
         </section>
 
         <aside className="controls">
+          {selectedClip && (
+            <ClipProperties
+              clip={selectedClip}
+              disabled={isExporting}
+              onUpdate={(patch) => updateClip(selectedClip.id, patch)}
+            />
+          )}
+
           <div className="card">
             <div className="cardHeader">
-              <h3>Sorgente</h3>
+              <h3>Export</h3>
             </div>
             <div className="cardBody stack">
-              <label
+              <div className="small">Per ora esporta solo la prima clip video della timeline.</div>
+              <button
                 className="aurorBtn primary"
-                style={{ cursor: isExporting ? "not-allowed" : "pointer", opacity: isExporting ? 0.5 : 1 }}
+                type="button"
+                disabled={isExporting || isEmpty}
+                onClick={() => void engine.runExport(project.fps)}
               >
-                {asset ? "Sostituisci video" : "Importa video"}
-                <input
-                  type="file"
-                  accept="video/*"
-                  style={{ display: "none" }}
-                  disabled={isExporting}
-                  onChange={onImport}
-                />
-              </label>
-              {asset && (
+                Esporta MP4
+              </button>
+              {engine.exportState.status === "running" && (
                 <div className="small">
-                  {asset.fileName} — {asset.width}×{asset.height}
+                  {engine.exportState.message} {Math.round(engine.exportState.progress * 100)}%
                 </div>
+              )}
+              {engine.exportState.status === "error" && (
+                <div className="small" style={{ color: "var(--danger)" }}>
+                  {engine.exportState.message}
+                </div>
+              )}
+              {engine.exportState.status === "done" && engine.exportState.url && (
+                <a className="aurorBtn" href={engine.exportState.url} download={`${project.name}.mp4`}>
+                  Scarica {project.name}.mp4
+                </a>
               )}
             </div>
           </div>
-
-          {asset && clip && (
-            <div className="card">
-              <div className="cardHeader">
-                <h3>Trim</h3>
-              </div>
-              <div className="cardBody stack">
-                <div className="line">
-                  <span className="aurorLabel">Inizio</span>
-                  <input
-                    className="aurorInput"
-                    style={{ width: 90 }}
-                    type="number"
-                    min={0}
-                    max={Math.max(clip.sourceOut - 0.1, 0)}
-                    step={0.1}
-                    value={clip.sourceIn.toFixed(1)}
-                    disabled={isExporting}
-                    onChange={(e) =>
-                      setTrim(clip.id, Math.min(Number(e.target.value), clip.sourceOut - 0.1), clip.sourceOut)
-                    }
-                  />
-                </div>
-                <div className="line">
-                  <span className="aurorLabel">Fine</span>
-                  <input
-                    className="aurorInput"
-                    style={{ width: 90 }}
-                    type="number"
-                    min={clip.sourceIn + 0.1}
-                    max={asset.duration}
-                    step={0.1}
-                    value={clip.sourceOut.toFixed(1)}
-                    disabled={isExporting}
-                    onChange={(e) =>
-                      setTrim(clip.id, clip.sourceIn, Math.max(Number(e.target.value), clip.sourceIn + 0.1))
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {asset && clip && (
-            <div className="card">
-              <div className="cardHeader">
-                <h3>Export</h3>
-              </div>
-              <div className="cardBody stack">
-                <button
-                  className="aurorBtn primary"
-                  type="button"
-                  disabled={engine.exportState.status === "running"}
-                  onClick={() => void engine.runExport(clip, project.fps)}
-                >
-                  Esporta MP4
-                </button>
-                {engine.exportState.status === "running" && (
-                  <div className="small">
-                    {engine.exportState.message} {Math.round(engine.exportState.progress * 100)}%
-                  </div>
-                )}
-                {engine.exportState.status === "error" && (
-                  <div className="small" style={{ color: "var(--danger)" }}>
-                    {engine.exportState.message}
-                  </div>
-                )}
-                {engine.exportState.status === "done" && engine.exportState.url && (
-                  <a className="aurorBtn" href={engine.exportState.url} download={`${project.name}.mp4`}>
-                    Scarica {project.name}.mp4
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
         </aside>
+
+        <Timeline
+          project={project}
+          selectedClipId={selectedClipId}
+          currentTime={engine.currentTime}
+          onSeek={(t) => void engine.seek(t)}
+          onSelectClip={selectClip}
+          onMoveClip={moveClip}
+          onResizeClipStart={resizeClipStart}
+          onResizeClipEnd={resizeClipEnd}
+          onAddVideoTrack={addVideoTrack}
+          onAddTextTrack={addTextTrack}
+          onRemoveTrack={removeTrack}
+          onImportToTrack={onImportToTrack}
+          onAddTextClip={addTextClip}
+          onRemoveClip={removeClip}
+        />
       </main>
     </div>
   );

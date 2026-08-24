@@ -86,11 +86,16 @@ body {
   overflow: hidden;
   display: grid;
   grid-template-columns: 1fr 340px;
+  grid-template-rows: 1fr auto;
+  grid-template-areas:
+    "viewport controls"
+    "timeline timeline";
   gap: var(--auror-s-4);
   min-height: 0;
 }
 
 .viewportCard {
+  grid-area: viewport;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -167,6 +172,7 @@ input[type="range"] {
 }
 
 .controls {
+  grid-area: controls;
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
@@ -190,4 +196,142 @@ input[type="range"] {
 .line > .aurorLabel {
   margin: 0;
   white-space: nowrap;
+}
+
+/* ---- Timeline ------------------------------------------------------ */
+.timelineCard {
+  grid-area: timeline;
+  display: flex;
+  flex-direction: column;
+  height: 240px;
+  padding: 0;
+}
+.timelineBody {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+}
+.timelineHeaders {
+  flex: 0 0 160px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+.timelineHeaderSpacer {
+  height: 28px;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--border);
+}
+.timelineTrackHeader {
+  height: 56px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.timelineScroll {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+.timelineRuler {
+  height: 28px;
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-sunken);
+  cursor: pointer;
+}
+.timelineTick {
+  position: absolute;
+  top: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+  transform: translateX(2px);
+  pointer-events: none;
+}
+.timelinePlayhead {
+  position: absolute;
+  top: 0;
+  bottom: -1000px;
+  width: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 5;
+}
+.timelineTrack {
+  height: 56px;
+  position: relative;
+  border-bottom: 1px solid var(--border-soft);
+}
+.timelineTrack--video {
+  background: rgba(47, 111, 159, 0.12);
+}
+.timelineTrack--text {
+  background: rgba(107, 79, 156, 0.12);
+}
+.timelineClip {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  border-radius: var(--auror-r);
+  border: 1px solid var(--border-strong);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  /* niente overflow:hidden qui: taglierebbe via il bottone di eliminazione,
+     posizionato leggermente fuori dai bordi. La label tronca da sola. */
+  user-select: none;
+}
+.timelineClip--video {
+  background: var(--auror-river);
+  border-color: var(--auror-river);
+}
+.timelineClip--text {
+  background: var(--auror-amethyst);
+  border-color: var(--auror-amethyst);
+}
+.timelineClip.selected {
+  box-shadow: var(--focus-ring);
+}
+.timelineClipLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timelineClipHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+}
+.timelineClipHandle--start {
+  left: 0;
+}
+.timelineClipHandle--end {
+  right: 0;
+}
+.timelineClipRemove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
 }
