@@ -66,9 +66,12 @@
   --auror-s-10:         32px;
   --auror-s-12:         48px;
 
-  /* ---- Type ---- */
-  --auror-font:  "Inter", sans-serif;
-  --auror-mono:  "Inter", sans-serif;
+  /* ---- Type ----
+     Stack di font di sistema: nessuna richiesta a CDN esterni (niente Google
+     Fonts). Se in futuro si vuole il vero Inter, basta aggiungere i file
+     .ttf in packages/design-tokens/fonts/ e ripristinare un @font-face. */
+  --auror-font:  -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --auror-mono:  ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
 
   --auror-fs-11: 11px;
   --auror-fs-12: 12px;

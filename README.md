@@ -45,6 +45,33 @@ docker compose up --build
 Fase 1: nessuna persistenza ancora (stato del progetto solo in memoria nel
 browser) — la persistenza progetti/media (Postgres) arriva in Fase 4.
 
+## Build riproducibile / standalone
+
+Il progetto non dipende da nessun repo o servizio esterno per funzionare:
+niente CDN a runtime (font di sistema, non Google Fonts), Docker builda tutto
+da solo, l'unica cosa esterna resta `npm install` che scarica i pacchetti
+da npm — ma le versioni sono fissate (non `^range`) dove è stato verificato
+un numero esatto funzionante, così un rebuild non prende silenziosamente una
+versione più recente e diversa da quella testata.
+
+Manca ancora un pezzo per la riproducibilità totale: un `package-lock.json`
+committato, che blocca *anche* tutte le dipendenze indirette (non solo quelle
+dirette in `package.json`) a un hash preciso. Non posso generarlo da questa
+sessione (serve un vero `npm install` in un ambiente con Node, che qui non
+ho). Se hai un momento con Node disponibile — il tuo PC, una Codespace, un
+runner CI, o anche il "Console" di un container temporaneo da Portainer —
+basta:
+
+```sh
+npm install --package-lock-only
+git add package-lock.json
+git commit   # l'hook genera il messaggio da solo
+git push
+```
+
+Da quel momento in poi `npm install` nel Dockerfile userà automaticamente il
+lockfile per risolvere le stesse identiche versioni ogni volta.
+
 ## Commit automatici
 
 L'hook `.githooks/prepare-commit-msg` genera da solo il messaggio quando se
