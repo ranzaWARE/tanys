@@ -80,6 +80,7 @@ async function encodeVideoRealtime(
   inSec: number,
   outSec: number,
   fps: number,
+  isAborted: () => boolean,
   onProgress?: (ratio: number) => void
 ): Promise<void> {
   const video = source.video as VideoWithFrameCallback;
@@ -88,6 +89,13 @@ async function encodeVideoRealtime(
 
   let frameIndex = 0;
   let settled = false;
+  // Timestamp dell'ultimo frame accettato: mai mandare all'encoder un
+  // timestamp <= a questo, qualunque cosa riporti mediaTime. Protegge da
+  // interferenze esterne sullo stesso <video> (play/seek/trim toccati
+  // mentre l'export e' in corso) che altrimenti manderebbero il muxer in un
+  // loop infinito di errori "timestamps must be monotonically increasing"
+  // invece di limitarsi a corrompere l'export in corso.
+  let lastAcceptedT = -Infinity;
 
   await new Promise<void>((resolve, reject) => {
     const finish = () => {
@@ -99,14 +107,23 @@ async function encodeVideoRealtime(
 
     const onFrame = (_now: number, metadata: VideoFrameCallbackMetadata) => {
       if (settled) return;
+      if (isAborted()) {
+        finish();
+        return;
+      }
       const t = metadata.mediaTime - inSec;
       if (t >= durationSec) {
         finish();
         return;
       }
+      if (t <= lastAcceptedT) {
+        video.requestVideoFrameCallback(onFrame);
+        return;
+      }
+      lastAcceptedT = t;
       compositor.renderFrame();
       const frame = new VideoFrame(compositor.canvas, {
-        timestamp: Math.round(Math.max(0, t) * 1_000_000),
+        timestamp: Math.round(t * 1_000_000),
       });
       videoEncoder.encode(frame, { keyFrame: frameIndex % (fps * 2) === 0 });
       frame.close();
@@ -187,9 +204,25 @@ export async function exportClip(
     firstTimestampBehavior: "offset",
   });
 
+  let videoFailed = false;
   const videoEncoder = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-    error: (e) => console.error("[video-engine] errore encoder video", e),
+    output: (chunk, meta) => {
+      if (videoFailed) return;
+      try {
+        muxer.addVideoChunk(chunk, meta);
+      } catch (e) {
+        // Un solo errore del muxer (es. timestamp fuori sequenza per
+        // interferenza esterna sul <video> durante l'export) ferma la
+        // cattura invece di continuare a mandare frame a un encoder ormai
+        // rotto, che altrimenti fallirebbe su ogni chunk successivo.
+        videoFailed = true;
+        console.error("[video-engine] errore muxer video, export interrotto", e);
+      }
+    },
+    error: (e) => {
+      videoFailed = true;
+      console.error("[video-engine] errore encoder video", e);
+    },
   });
   videoEncoder.configure({ codec: videoCodec, width, height, bitrate: 12_000_000, framerate: fps });
 
@@ -209,9 +242,22 @@ export async function exportClip(
 
   // ---- video: cattura in tempo reale, non piu' seek-per-frame ----
   compositor.setSize(width, height);
-  await encodeVideoRealtime(compositor, source, videoEncoder, inSec, outSec, fps, (ratio) =>
-    onProgress?.({ phase: "video", ratio })
+  await encodeVideoRealtime(
+    compositor,
+    source,
+    videoEncoder,
+    inSec,
+    outSec,
+    fps,
+    () => videoFailed,
+    (ratio) => onProgress?.({ phase: "video", ratio })
   );
+  if (videoFailed) {
+    videoEncoder.close();
+    throw new Error(
+      "Export interrotto: qualcosa ha interferito con la riproduzione durante la cattura (es. play/seek/trim toccati mentre esportava). Riprova senza toccare i controlli finché l'export non è finito."
+    );
+  }
   await videoEncoder.flush();
   videoEncoder.close();
 

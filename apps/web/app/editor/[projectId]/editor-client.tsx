@@ -62,6 +62,7 @@ export function Editor({ projectId }: { projectId: string }) {
   const asset = clip ? (media[clip.mediaId] ?? null) : null;
 
   const engine = useClipEngine(canvasRef, asset);
+  const isExporting = engine.exportState.status === "running";
 
   const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -125,7 +126,7 @@ export function Editor({ projectId }: { projectId: string }) {
               <button
                 className="aurorBtn playBtn"
                 type="button"
-                disabled={!engine.ready}
+                disabled={!engine.ready || isExporting}
                 onClick={() => (engine.playing ? engine.pause() : engine.play())}
               >
                 {engine.playing ? "❚❚" : "▶"}
@@ -138,7 +139,7 @@ export function Editor({ projectId }: { projectId: string }) {
                   max={Math.max(asset?.duration ?? 0, 0.01)}
                   step={0.01}
                   value={engine.currentTime}
-                  disabled={!engine.ready}
+                  disabled={!engine.ready || isExporting}
                   onChange={(e) => void engine.seek(Number(e.target.value))}
                 />
               </div>
@@ -155,9 +156,18 @@ export function Editor({ projectId }: { projectId: string }) {
               <h3>Sorgente</h3>
             </div>
             <div className="cardBody stack">
-              <label className="aurorBtn primary" style={{ cursor: "pointer" }}>
+              <label
+                className="aurorBtn primary"
+                style={{ cursor: isExporting ? "not-allowed" : "pointer", opacity: isExporting ? 0.5 : 1 }}
+              >
                 {asset ? "Sostituisci video" : "Importa video"}
-                <input type="file" accept="video/*" style={{ display: "none" }} onChange={onImport} />
+                <input
+                  type="file"
+                  accept="video/*"
+                  style={{ display: "none" }}
+                  disabled={isExporting}
+                  onChange={onImport}
+                />
               </label>
               {asset && (
                 <div className="small">
@@ -183,6 +193,7 @@ export function Editor({ projectId }: { projectId: string }) {
                     max={Math.max(clip.sourceOut - 0.1, 0)}
                     step={0.1}
                     value={clip.sourceIn.toFixed(1)}
+                    disabled={isExporting}
                     onChange={(e) =>
                       setTrim(clip.id, Math.min(Number(e.target.value), clip.sourceOut - 0.1), clip.sourceOut)
                     }
@@ -198,6 +209,7 @@ export function Editor({ projectId }: { projectId: string }) {
                     max={asset.duration}
                     step={0.1}
                     value={clip.sourceOut.toFixed(1)}
+                    disabled={isExporting}
                     onChange={(e) =>
                       setTrim(clip.id, clip.sourceIn, Math.max(Number(e.target.value), clip.sourceIn + 0.1))
                     }
