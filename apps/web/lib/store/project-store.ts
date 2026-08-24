@@ -46,9 +46,13 @@ export type Clip = VideoClip | TextClip;
 
 // Partial<Clip> (con Clip union) ristringerebbe ai soli campi comuni fra
 // VideoClip e TextClip: niente "text"/"color"/"fontSize", niente
-// "sourceIn"/"volume". Serve l'intersezione dei due Partial per poter
-// patchare campi specifici di un solo tipo.
-export type ClipPatch = Partial<VideoClip & TextClip>;
+// "sourceIn"/"volume". Un'intersezione diretta (VideoClip & TextClip) non
+// va bene nemmeno lei: "kind" e' "video" in uno e "text" nell'altro, due
+// letterali incompatibili su un campo richiesto, e TypeScript collassa
+// l'intera intersezione a "never" (non solo quel campo). Si toglie "kind"
+// da entrambi prima di intersecarli, cosi' non resta nessun campo
+// insoddisfacibile.
+export type ClipPatch = Partial<Omit<VideoClip, "kind">> & Partial<Omit<TextClip, "kind">>;
 
 export interface Track {
   id: string;
