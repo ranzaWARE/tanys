@@ -67,6 +67,28 @@ oppure, per un IP:
 }
 ```
 
+**Se usi un IP** (non un dominio) va aggiornato anche `default_sni` nel
+blocco globale in cima al file, con lo stesso IP:
+
+```
+{
+	servers {
+		default_sni 192.168.1.50
+	}
+}
+```
+
+Motivo: connettendosi via IP il browser non manda nessun hostname
+nell'handshake TLS (niente SNI, gli IP non ci vanno per specifica). Dentro
+Docker, poi, l'indirizzo locale che Caddy vede in una connessione è sempre
+quello *interno* del container (assegnato dalla rete Docker), mai l'IP
+esterno del server che il client ha digitato — il NAT del port mapping lo
+riscrive prima che arrivi a Caddy. Senza `default_sni`, Caddy cerca un
+certificato per quell'IP interno e non lo trova mai, indipendentemente da
+cosa scrivi come indirizzo del sito. `default_sni` dice esplicitamente a
+Caddy "tratta le connessioni senza SNI come se fossero per questo host",
+bypassando il problema.
+
 Connettendosi via IP (non dominio) il browser non manda nessun hostname
 nell'handshake TLS (SNI vuoto, gli IP non ci vanno per specifica): senza
 un indirizzo esplicito nel Caddyfile, Caddy non sa per quale identità

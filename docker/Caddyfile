@@ -1,12 +1,20 @@
 {
 	debug
+
+	# Docker riscrive l'IP di destinazione del pacchetto prima che arrivi a
+	# Caddy (NAT del port mapping): l'indirizzo locale che Caddy vede in una
+	# connessione e' sempre quello INTERNO del container (es. 192.168.0.3),
+	# mai l'IP esterno del server che il client ha effettivamente digitato.
+	# Connettendosi via IP (non dominio) il client non manda SNI: senza
+	# default_sni, Caddy prova a cercare un certificato per l'IP interno del
+	# container e non lo trova mai, qualunque indirizzo sia scritto nel sito
+	# sotto — da qui gli handshake falliti nonostante l'IP giusto nel file.
+	servers {
+		default_sni 192.168.100.5
+	}
 }
 
-# IP hardcoded invece che via $SITE_ADDRESS: la variabile d'ambiente non
-# arrivava al container attraverso la catena Portainer -> interpolazione
-# del compose (confermato dai log di debug: l'identificatore del
-# certificato restava sempre l'IP interno del container Docker, mai
-# quello impostato). Se cambi server/IP, modifica questa riga.
+# Se cambi server/IP, aggiorna sia questa riga sia il default_sni sopra.
 192.168.100.5 {
 	tls internal
 
