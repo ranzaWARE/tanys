@@ -11,7 +11,9 @@ services:
   # plain HTTP su un IP/dominio remoto non e' un secure context e WebCodecs
   # (l'export hardware-accelerated) resta bloccato dal browser. Vedi README.
   caddy:
-    image: caddy:2-alpine
+    build:
+      context: .
+      dockerfile: docker/Caddy.Dockerfile
     restart: unless-stopped
     depends_on:
       - web
@@ -21,7 +23,6 @@ services:
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:443}
     volumes:
-      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
 
