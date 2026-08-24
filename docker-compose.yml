@@ -16,8 +16,8 @@ services:
     depends_on:
       - web
     ports:
-      - "80:80"
-      - "443:443"
+      - "${HTTP_PORT:-85}:80"
+      - "${HTTPS_PORT:-448}:443"
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:443}
     volumes:

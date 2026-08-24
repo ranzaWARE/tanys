@@ -29,18 +29,31 @@ o dominio raggiunto in plain HTTP il browser lo blocca e basta).
 
 ```sh
 docker compose up --build
-# apri https://<indirizzo-del-server>
+# apri https://<indirizzo-del-server>:448
 ```
 
-- **Hai un dominio che punta al server** (porte 80/443 raggiungibili da
-  internet): imposta `SITE_ADDRESS=video.tuodominio.it` (in un file `.env`
-  accanto a `docker-compose.yml`, o `SITE_ADDRESS=... docker compose up`).
-  Caddy ottiene da solo un certificato Let's Encrypt valido.
-- **Solo IP, nessun dominio**: non serve fare nulla, `SITE_ADDRESS` di default
-  è `:443` — Caddy serve HTTPS con un certificato self-signed dalla sua CA
-  interna. Il browser mostrerà un avviso "connessione non sicura" al primo
-  accesso: si procede manualmente una volta e da lì in poi la connessione è
-  comunque un secure context, WebCodecs funziona normalmente.
+Le porte pubblicate di default sono `85`/`448` (non `80`/`443`) apposta, per
+non entrare in conflitto con altri stack già presenti sullo stesso host (un
+reverse proxy, Pi-hole, ecc.). Si cambiano con le variabili d'ambiente
+`HTTP_PORT`/`HTTPS_PORT`, in un file `.env` accanto a `docker-compose.yml`:
+
+```
+HTTP_PORT=85
+HTTPS_PORT=448
+```
+
+- **Hai un dominio che punta al server** e le porte 80/443 sono libere e
+  raggiungibili da internet: imposta anche `SITE_ADDRESS=video.tuodominio.it`
+  e lascia `HTTP_PORT=80`/`HTTPS_PORT=443` — Caddy ottiene da solo un
+  certificato Let's Encrypt valido (la verifica ACME passa sempre dalla
+  porta 80 standard, quindi su una porta diversa un dominio reale non
+  funziona).
+- **Solo IP, nessun dominio, porte non standard** (il caso di default): non
+  serve configurare nulla — Caddy serve HTTPS con un certificato self-signed
+  dalla sua CA interna sulla porta scelta. Il browser mostrerà un avviso
+  "connessione non sicura" al primo accesso: si procede manualmente una
+  volta e da lì in poi la connessione è comunque un secure context,
+  WebCodecs funziona normalmente.
 
 Fase 1: nessuna persistenza ancora (stato del progetto solo in memoria nel
 browser) — la persistenza progetti/media (Postgres) arriva in Fase 4.
