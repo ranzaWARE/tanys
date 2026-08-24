@@ -52,6 +52,75 @@ async function pickVideoCodec(width: number, height: number, fps: number): Promi
   return null;
 }
 
+// Tipo locale (non una dichiarazione globale) per requestVideoFrameCallback:
+// evita sia di dipendere dal fatto che lib.dom.d.ts lo includa o meno, sia
+// il rischio di un conflitto "duplicate identifier" se invece lo includesse
+// gia'. E' un'API Chromium-only, ma qui va bene: WebCodecs lo e' comunque.
+interface VideoFrameCallbackMetadata {
+  mediaTime: number;
+}
+type VideoWithFrameCallback = HTMLVideoElement & {
+  requestVideoFrameCallback(cb: (now: number, metadata: VideoFrameCallbackMetadata) => void): number;
+};
+
+/**
+ * Cattura i frame in riproduzione in tempo reale (via requestVideoFrameCallback)
+ * invece di fare un seek per ogni frame: un seek preciso ha un costo reale (il
+ * browser deve riposizionarsi sul keyframe piu' vicino e decodificare in
+ * avanti), farlo 30 volte al secondo e' molto piu' lento della riproduzione
+ * continua che il decoder gestisce comunque in modo efficiente. Adeguato per
+ * l'unico caso che esiste ora (una clip sola, trim in/out) — quando la
+ * timeline avra' piu' clip/tagli da comporre in un ordine non riproducibile
+ * linearmente, questa funzione andra' rivista.
+ */
+async function encodeVideoRealtime(
+  compositor: Compositor,
+  source: ClipSource,
+  videoEncoder: VideoEncoder,
+  inSec: number,
+  outSec: number,
+  fps: number,
+  onProgress?: (ratio: number) => void
+): Promise<void> {
+  const video = source.video as VideoWithFrameCallback;
+  const durationSec = outSec - inSec;
+  await source.seekTo(inSec);
+
+  let frameIndex = 0;
+  let settled = false;
+
+  await new Promise<void>((resolve, reject) => {
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      video.pause();
+      resolve();
+    };
+
+    const onFrame = (_now: number, metadata: VideoFrameCallbackMetadata) => {
+      if (settled) return;
+      const t = metadata.mediaTime - inSec;
+      if (t >= durationSec) {
+        finish();
+        return;
+      }
+      compositor.renderFrame();
+      const frame = new VideoFrame(compositor.canvas, {
+        timestamp: Math.round(Math.max(0, t) * 1_000_000),
+      });
+      videoEncoder.encode(frame, { keyFrame: frameIndex % (fps * 2) === 0 });
+      frame.close();
+      frameIndex++;
+      onProgress?.(Math.min(1, Math.max(0, t) / durationSec));
+      video.requestVideoFrameCallback(onFrame);
+    };
+
+    video.addEventListener("ended", finish, { once: true });
+    video.requestVideoFrameCallback(onFrame);
+    video.play().catch(reject);
+  });
+}
+
 async function decodeAudio(file: File, sampleRate: number): Promise<AudioBuffer | null> {
   if (typeof AudioContext === "undefined") return null;
   try {
@@ -67,12 +136,9 @@ async function decodeAudio(file: File, sampleRate: number): Promise<AudioBuffer 
 }
 
 /**
- * Loop di export deterministico e non-realtime: per ogni frame di output si
- * fa seek della sorgente, si compone su canvas e si passa il risultato a
- * VideoEncoder; l'audio viene tagliato separatamente da un AudioBuffer
- * decodificato una volta sola. A differenza della cattura realtime del
- * prototipo 360 (necessaria li' per tenere sincroni due <video> indipendenti),
- * qui non c'e' alcun vincolo di tempo reale.
+ * Video catturato in riproduzione in tempo reale (vedi encodeVideoRealtime),
+ * audio tagliato separatamente da un AudioBuffer decodificato una volta sola
+ * (quello invece resta indipendente dal tempo reale, non ha bisogno di esserlo).
  */
 export async function exportClip(
   compositor: Compositor,
@@ -141,29 +207,11 @@ export async function exportClip(
     });
   }
 
-  // ---- video: seek -> render -> VideoFrame, un frame alla volta ----
-  const frameDurationUs = 1_000_000 / fps;
-  const totalFrames = Math.max(1, Math.round(durationSec * fps));
+  // ---- video: cattura in tempo reale, non piu' seek-per-frame ----
   compositor.setSize(width, height);
-
-  for (let i = 0; i < totalFrames; i++) {
-    const t = inSec + i / fps;
-    await source.seekTo(t);
-    compositor.renderFrame();
-
-    const timestamp = Math.round(i * frameDurationUs);
-    const frame = new VideoFrame(compositor.canvas, {
-      timestamp,
-      duration: Math.round(frameDurationUs),
-    });
-    videoEncoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });
-    frame.close();
-
-    if (videoEncoder.encodeQueueSize > 8) {
-      await new Promise((r) => setTimeout(r, 0));
-    }
-    onProgress?.({ phase: "video", ratio: (i + 1) / totalFrames });
-  }
+  await encodeVideoRealtime(compositor, source, videoEncoder, inSec, outSec, fps, (ratio) =>
+    onProgress?.({ phase: "video", ratio })
+  );
   await videoEncoder.flush();
   videoEncoder.close();
 
