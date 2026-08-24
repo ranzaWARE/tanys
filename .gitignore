@@ -3,6 +3,9 @@ node_modules/
 dist/
 *.log
 npm-debug.log*
-.env
-.env.local
 .DS_Store
+
+# .env è committato di proposito: per ora contiene solo config di deploy
+# non sensibile (SITE_ADDRESS, HTTP_PORT, HTTPS_PORT), non segreti. Se in
+# futuro finiscono lì credenziali vere (es. DATABASE_URL in Fase 4), va
+# spostato in un file separato e quello sì va ignorato.
