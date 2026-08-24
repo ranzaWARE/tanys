@@ -17,8 +17,20 @@ export interface ExportOptions {
   onProgress?: (p: ExportProgress) => void;
 }
 
-// Stessi profili gia' validati (in ordine di preferenza) nel prototipo reframe360.html.
-const VIDEO_CODEC_CANDIDATES = ["avc1.640028", "avc1.4d0028", "avc1.42e01e"];
+// Profili H.264 in ordine di preferenza. I livelli 4.0/4.2 del prototipo
+// reframe360.html (pensato per un singolo stitch, non per sorgenti generiche)
+// non bastano per risoluzioni tipiche di action cam/drone (es. 2720x1530 di
+// un DJI: ~4.16 Mpx, sopra il limite di ~2.1 Mpx del Level 4.0) — servono
+// anche i livelli 5.0/5.1 (fino a ~5.6 Mpx) prima di scendere ai fallback.
+const VIDEO_CODEC_CANDIDATES = [
+  "avc1.640033", // High, Level 5.1
+  "avc1.640032", // High, Level 5.0
+  "avc1.64002a", // High, Level 4.2
+  "avc1.640028", // High, Level 4.0
+  "avc1.4d0033", // Main, Level 5.1
+  "avc1.4d0028", // Main, Level 4.0
+  "avc1.42e01e", // Baseline, Level 3.0 (ultima spiaggia, solo bassa risoluzione)
+];
 const AUDIO_SAMPLE_RATE = 48000;
 const AUDIO_CHUNK_FRAMES = 1024;
 

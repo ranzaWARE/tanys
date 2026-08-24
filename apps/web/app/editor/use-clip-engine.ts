@@ -19,6 +19,18 @@ export interface ExportState {
 
 const IDLE_EXPORT: ExportState = { status: "idle", progress: 0, message: "" };
 
+// Valore neutro identico a quello che detectCapabilities() produce quando
+// window/document non esistono (rendering server-side di Next.js). Se lo
+// stato iniziale del client fosse gia' il risultato vero di detectCapabilities(),
+// il badge GPU cambierebbe testo fra HTML server e primo render client,
+// causando un hydration mismatch di React (errore #418).
+const SSR_SAFE_CAPABILITIES: EngineCapabilities = {
+  webCodecs: false,
+  webgl2: false,
+  gpuRenderer: null,
+  hardwareAccelerated: false,
+};
+
 export function useClipEngine(canvasRef: RefObject<HTMLCanvasElement | null>, asset: MediaAsset | null) {
   const sourceRef = useRef<ClipSource | null>(null);
   const compositorRef = useRef<Compositor | null>(null);
@@ -26,8 +38,15 @@ export function useClipEngine(canvasRef: RefObject<HTMLCanvasElement | null>, as
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [capabilities] = useState<EngineCapabilities>(() => detectCapabilities());
+  const [capabilities, setCapabilities] = useState<EngineCapabilities>(SSR_SAFE_CAPABILITIES);
   const [exportState, setExportState] = useState<ExportState>(IDLE_EXPORT);
+
+  // Rilevate solo dopo il mount: cosi' il primo render client combacia
+  // sempre con l'HTML del server, e il valore vero arriva con un aggiornamento
+  // successivo (comportamento normale, non causa hydration mismatch).
+  useEffect(() => {
+    setCapabilities(detectCapabilities());
+  }, []);
 
   // Un Compositor per tutta la vita del canvas.
   useEffect(() => {
