@@ -144,7 +144,8 @@ export function useClipEngine(
 
   const syncActiveVideos = async (t: number, autoplay: boolean) => {
     const nextActive = new Set<string>();
-    const seeks: Promise<void>[] = [];
+    const newlyActive: { source: ClipSource; seekTarget: number }[] = [];
+
     for (const track of project.tracks) {
       if (track.kind !== "video") continue;
       const clip = activeClipOnTrack(track.clips, t) as VideoClip | undefined;
@@ -153,19 +154,25 @@ export function useClipEngine(
       if (!source) continue;
       nextActive.add(clip.id);
       if (!activeClipIdsRef.current.has(clip.id)) {
-        seeks.push(source.seekTo(clip.sourceIn + (t - clip.trackStart)));
+        newlyActive.push({ source, seekTarget: clip.sourceIn + (t - clip.trackStart) });
       }
     }
-    await Promise.all(seeks);
-    for (const id of nextActive) {
-      if (!activeClipIdsRef.current.has(id) && autoplay) {
-        sourcesRef.current.get(id)?.video.play().catch(() => {});
-      }
-    }
+
     for (const id of activeClipIdsRef.current) {
       if (!nextActive.has(id)) sourcesRef.current.get(id)?.video.pause();
     }
+    // Aggiornato subito, prima di aspettare i seek: un seek lento su una
+    // clip (dati non ancora bufferizzati) non deve far ripartire da capo il
+    // tentativo ad ogni fotogramma successivo — al massimo aspetta i suoi 2s
+    // di timeout una volta sola (vedi ClipSource.seekTo).
     activeClipIdsRef.current = nextActive;
+
+    await Promise.all(
+      newlyActive.map(async ({ source, seekTarget }) => {
+        await source.seekTo(seekTarget);
+        if (autoplay) source.video.play().catch(() => {});
+      })
+    );
   };
 
   const renderAt = (t: number) => {

@@ -209,6 +209,7 @@ export function Timeline({
                         className="timelineClipRemove"
                         type="button"
                         title="Elimina clip"
+                        onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
                           onRemoveClip(clip.id);

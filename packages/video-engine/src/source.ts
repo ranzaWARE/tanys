@@ -49,17 +49,27 @@ export class ClipSource {
     video.load();
   }
 
-  /** Seek deterministico: risolve solo dopo che il frame richiesto e' pronto. */
+  /**
+   * Seek deterministico: risolve dopo l'evento 'seeked', o comunque non oltre
+   * 2s — rete di sicurezza contro un evento che non arriva mai (es. dati non
+   * ancora bufferizzati a quel punto del file), che altrimenti lascerebbe la
+   * promise pendente per sempre e bloccherebbe chi la aspetta.
+   */
   seekTo(t: number): Promise<void> {
     const v = this.video;
     const target = Math.min(Math.max(t, 0), this.duration || t);
     if (Math.abs(v.currentTime - target) < 1e-4) return Promise.resolve();
     return new Promise((resolve) => {
-      const onSeeked = () => {
-        v.removeEventListener("seeked", onSeeked);
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        v.removeEventListener("seeked", finish);
+        clearTimeout(timer);
         resolve();
       };
-      v.addEventListener("seeked", onSeeked);
+      v.addEventListener("seeked", finish);
+      const timer = setTimeout(finish, 2000);
       v.currentTime = target;
     });
   }
